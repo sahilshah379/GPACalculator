@@ -55,7 +55,6 @@ def scrapeGrades(username, password):
             'Q4': rowData[5],
             'X2': rowData[6],
         }
-        print(rowData)
         grades.append(subject)
     driver.quit()
     return grades
