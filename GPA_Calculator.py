@@ -1,6 +1,5 @@
 #! /usr/bin/env python3
 
-import os
 import re
 import sys
 import getpass
@@ -10,7 +9,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.options import Options
 
 
-def scrapeGrades(username, password):
+def scrape_grades(username, password):
     login_url = 'https://ps2.millburn.org/public/home.html'
     grades_url = 'https://ps2.millburn.org/guardian/home.html'
 
@@ -28,211 +27,224 @@ def scrapeGrades(username, password):
 
     try:
         table = driver.find_element(By.XPATH, '//*[@id="quickLookup"]/table[1]/tbody')
-    except:
+    except Exception:
         print('Invalid Username or Password!')
         sys.exit()
     rows = table.find_elements(By.TAG_NAME, 'tr')
     grades = []
-    for x in range(3,11):
-        columns = [11,13,14,15,18,19,16]
-        rowData = []
-        for y in range(0,len(columns)):
+    for x in range(3, 11):
+        columns = [11, 13, 14, 15, 18, 19, 16]
+        row_data = []
+        for y in range(0, len(columns)):
             col = rows[x].find_elements(By.TAG_NAME, 'td')[columns[y]]
-            colData = ''
-            if (columns[y] == 11):
-                colData = col.text.split(' \n ', 1)[0]
+            if columns[y] == 11:
+                col_data = col.text.split(' \n ', 1)[0]
             else:
-                colData = re.sub('[^0-9.]','', col.text)
-            if (colData == ''):
-                colData = None
-            rowData.append(colData)
+                col_data = re.sub('[^0-9.]', '', col.text)
+            if col_data == '':
+                col_data = None
+            row_data.append(col_data)
         subject = {
-            'Subject': rowData[0],
-            'Q1': rowData[1],
-            'Q2': rowData[2],
-            'X1': rowData[3],
-            'Q3': rowData[4],
-            'Q4': rowData[5],
-            'X2': rowData[6],
+            'Subject': row_data[0],
+            'Q1': row_data[1],
+            'Q2': row_data[2],
+            'X1': row_data[3],
+            'Q3': row_data[4],
+            'Q4': row_data[5],
+            'X2': row_data[6],
         }
         grades.append(subject)
     driver.quit()
     return grades
 
+
 def level(grades):
     gym = None
-    for row in range(0,len(grades)):
-        level = 0
+    for row in range(0, len(grades)):
+        subject_level = 0
         subject = grades[row]['Subject']
-        if ('Phys Ed' in subject):
+        if 'Phys Ed' in subject or 'Physical Education' in subject:
             gym = row
-        elif ('AP' in subject):
-            level = 4
-        elif ('Acc' in subject):
-            level = 3
-        elif ('CPA' in subject):
-            level = 2
-        elif ('CPB' in subject):
-            level = 1
-        grades[row]['Level'] = level
-    if (gym != None):
-        del(grades[gym])
+        elif 'AP' in subject:
+            subject_level = 4
+        elif 'Acc' in subject:
+            subject_level = 3
+        elif 'CPA' in subject:
+            subject_level = 2
+        elif 'CPB' in subject:
+            subject_level = 1
+        grades[row]['Level'] = subject_level
+    if gym is not None:
+        del (grades[gym])
     return grades
 
+
 def main():
-    print('Enter your username: ', end = '')
+    print('Enter your username: ', end='')
     username = input()
-    password = getpass.getpass('Enter your password: ')
-    grades = gpa(letter(overall(level(scrapeGrades(username, password)))))
-    weightedGPA = getWeightedGPA(grades)
-    unweightedGPA = getUnweightedGPA(grades)
+    print('Enter your password: ', end='')
+    password = input()
+    # password = getpass.getpass('Enter your password: ')
+    grades = overall_gpa(letter(overall_grades(level(scrape_grades(username, password)))))
+    weighted_gpa = get_weighted_gpa(grades)
+    unweighted_gpa = get_unweighted_gpa(grades)
 
-    print('Weighted GPA: %s' %weightedGPA)
-    print('Unweighted GPA: %s\n' %unweightedGPA)
-    for subject in range(0,len(grades)):
+    print('Weighted GPA: %s' % weighted_gpa)
+    print('Unweighted GPA: %s\n' % unweighted_gpa)
+    for subject in range(0, len(grades)):
         if grades[subject]['Grade'] != -1:
-            print('%s:  %s (%s) - %s' %(grades[subject]['Subject'], grades[subject]['Grade'], grades[subject]['Letter'], grades[subject]['WeightedGPA']))
+            print('%s:  %s (%s) - %s' % (
+                grades[subject]['Subject'], grades[subject]['Grade'], grades[subject]['Letter'],
+                grades[subject]['WeightedGPA']))
         else:
-            print('%s:  None' %grades[subject]['Subject'])
+            print('%s:  None' % grades[subject]['Subject'])
 
 
-def getWeightedGPA(grades):
+def get_weighted_gpa(grades):
     gpa = 0
     count = 0
-    for subject in range(0,len(grades)):
-        gpaTemp = grades[subject]['WeightedGPA']
-        if (gpaTemp != None):
-            gpa += gpaTemp
+    for subject in range(0, len(grades)):
+        gpa_temp = grades[subject]['WeightedGPA']
+        if gpa_temp is not None:
+            gpa += gpa_temp
             count += 1
-    gpa = round(gpa/float(count),3)
+    gpa = round(gpa / float(count), 3)
     return gpa
 
-def getUnweightedGPA(grades):
+
+def get_unweighted_gpa(grades):
     gpa = 0
     count = 0
-    for subject in range(0,len(grades)):
-        gpaTemp = grades[subject]['UnweightedGPA']
-        if (gpaTemp != None):
-            gpa += gpaTemp
+    for subject in range(0, len(grades)):
+        gpa_temp = grades[subject]['UnweightedGPA']
+        if gpa_temp is not None:
+            gpa += gpa_temp
             count += 1
-    gpa = round(gpa/float(count),3)
+    gpa = round(gpa / float(count), 3)
     return gpa
 
-def gpa(grades):
+
+def overall_gpa(grades):
     num = 0
     for subject in grades:
         grade = subject['Grade']
-        if (subject['Level'] != 0 and grade != -1):
-            if (subject['Level'] == 4):
-                gpaWeighted = gpa_AP(grade)
-            elif (subject['Level'] == 3):
-                gpaWeighted = gpa_ACC(grade)
+        gpa_weighted = 0
+        gpa_unweighted = 0
+        if subject['Level'] != 0 and grade != -1:
+            if subject['Level'] == 4:
+                gpa_weighted = gpa_ap(grade)
+            elif subject['Level'] == 3:
+                gpa_weighted = gpa_acc(grade)
             else:
-                gpaWeighted = gpa_CP(grade)
-            gpaUnweighted = gpa_CP(grade)
-        grades[num]['WeightedGPA'] = gpaWeighted
-        grades[num]['UnweightedGPA'] = gpaUnweighted
+                gpa_weighted = gpa_cp(grade)
+            gpa_unweighted = gpa_cp(grade)
+        grades[num]['WeightedGPA'] = gpa_weighted
+        grades[num]['UnweightedGPA'] = gpa_unweighted
         num += 1
     return grades
 
-def overall(grades):
+
+def overall_grades(grades):
     num = 0
     for subject in grades:
         count = 0
         grade = 0
-        if (midterms(subject['Subject'])):
-            if (finals(subject['Subject'])):
-                if (subject['Q1'] != None):
-                    grade += (0.2*float(subject['Q1']))
+        if midterms(subject['Subject']):
+            if finals(subject['Subject']):
+                if subject['Q1'] is not None:
+                    grade += (0.2 * float(subject['Q1']))
                     count += 0.2
-                if (subject['Q2'] != None):
-                    grade += (0.2*float(subject['Q2']))
+                if subject['Q2'] is not None:
+                    grade += (0.2 * float(subject['Q2']))
                     count += 0.2
-                if (subject['X1'] != None):
-                    grade += (0.1*float(subject['X1']))
+                if subject['X1'] is not None:
+                    grade += (0.1 * float(subject['X1']))
                     count += 0.1
-                if (subject['Q3'] != None):
-                    grade += (0.2*float(subject['Q3']))
+                if subject['Q3'] is not None:
+                    grade += (0.2 * float(subject['Q3']))
                     count += 0.2
-                if (subject['Q4'] != None):
-                    grade += (0.2*float(subject['Q4']))
+                if subject['Q4'] is not None:
+                    grade += (0.2 * float(subject['Q4']))
                     count += 0.2
-                if (subject['X2'] != None):
-                    grade += (0.1*float(subject['X2']))
+                if subject['X2'] is not None:
+                    grade += (0.1 * float(subject['X2']))
                     count += 0.1
             else:
-                if (subject['Q1'] != None):
-                    grade += (0.2*float(subject['Q1']))
+                if subject['Q1'] is not None:
+                    grade += (0.2 * float(subject['Q1']))
                     count += 0.2
-                if (subject['Q2'] != None):
-                    grade += (0.2*float(subject['Q2']))
+                if subject['Q2'] is not None:
+                    grade += (0.2 * float(subject['Q2']))
                     count += 0.2
-                if (subject['X1'] != None):
-                    grade += (0.1*float(subject['X1']))
+                if subject['X1'] is not None:
+                    grade += (0.1 * float(subject['X1']))
                     count += 0.1
-                if (subject['Q3'] != None):
-                    grade += (0.25*float(subject['Q3']))
+                if subject['Q3'] is not None:
+                    grade += (0.25 * float(subject['Q3']))
                     count += 0.25
-                if (subject['Q4'] != None):
-                    grade += (0.25*float(subject['Q4']))
+                if subject['Q4'] is not None:
+                    grade += (0.25 * float(subject['Q4']))
                     count += 0.25
         else:
-            if (finals(subject['Subject'])):
-                if (subject['Q1'] != None):
-                    grade += (0.25*float(subject['Q1']))
+            if finals(subject['Subject']):
+                if subject['Q1'] is not None:
+                    grade += (0.25 * float(subject['Q1']))
                     count += 0.25
-                if (subject['Q2'] != None):
-                    grade += (0.25*float(subject['Q2']))
+                if subject['Q2'] is not None:
+                    grade += (0.25 * float(subject['Q2']))
                     count += 0.25
-                if (subject['Q3'] != None):
-                    grade += (0.2*float(subject['Q3']))
+                if subject['Q3'] is not None:
+                    grade += (0.2 * float(subject['Q3']))
                     count += 0.2
-                if (subject['Q4'] != None):
-                    grade += (0.2*float(subject['Q4']))
+                if subject['Q4'] is not None:
+                    grade += (0.2 * float(subject['Q4']))
                     count += 0.2
-                if (subject['X2'] != None):
-                    grade += (0.1*float(subject['X2']))
+                if subject['X2'] is not None:
+                    grade += (0.1 * float(subject['X2']))
                     count += 0.1
             else:
-                if (subject['Q1'] != None):
-                    grade += (0.25*float(subject['Q1']))
+                if subject['Q1'] is not None:
+                    grade += (0.25 * float(subject['Q1']))
                     count += 0.25
-                if (subject['Q2'] != None):
-                    grade += (0.25*float(subject['Q2']))
+                if subject['Q2'] is not None:
+                    grade += (0.25 * float(subject['Q2']))
                     count += 0.25
-                if (subject['Q3'] != None):
-                    grade += (0.25*float(subject['Q3']))
+                if subject['Q3'] is not None:
+                    grade += (0.25 * float(subject['Q3']))
                     count += 0.25
-                if (subject['Q4'] != None):
-                    grade += (0.25*float(subject['Q4']))
+                if subject['Q4'] is not None:
+                    grade += (0.25 * float(subject['Q4']))
                     count += 0.25
-        if (count == 0):
+        if count == 0:
             grade = -1
         else:
-            grade *= 1.0/count
-        grades[num]['Grade'] = round(grade,3)
+            grade *= 1.0 / count
+        grades[num]['Grade'] = round(grade, 3)
         num += 1
     return grades
 
-def midterms(subjectName):
-    if ('AP' in subjectName):
+
+def midterms(subject_name):
+    if 'AP' in subject_name:
         return True
-    elif ('Music' in subjectName):
+    elif 'Music' in subject_name:
         return False
-    elif ('Spanish' in subjectName):
+    elif 'Spanish' in subject_name:
         return False
     return True
 
-def finals(subjectName):
-    if ('AP' in subjectName):
+
+def finals(subject_name):
+    if 'AP' in subject_name:
         return False
-    elif ('Music' in subjectName):
+    elif 'Music' in subject_name:
         return False
-    elif ('Spanish' in subjectName):
+    elif 'Spanish' in subject_name:
         return False
-    elif ('Literature' in subjectName):
+    elif 'Literature' in subject_name:
         return False
     return True
+
 
 def letter(grades):
     num = 0
@@ -265,7 +277,8 @@ def letter(grades):
         num += 1
     return grades
 
-def gpa_AP(grade):
+
+def gpa_ap(grade):
     grade = round(grade)
     if grade >= 93:
         gpa = 4.667
@@ -293,7 +306,8 @@ def gpa_AP(grade):
         gpa = 0
     return gpa
 
-def gpa_ACC(grade):
+
+def gpa_acc(grade):
     grade = round(grade)
     if grade >= 93:
         gpa = 4.333
@@ -321,9 +335,9 @@ def gpa_ACC(grade):
         gpa = 0
     return gpa
 
-def gpa_CP(grade):
+
+def gpa_cp(grade):
     grade = round(grade)
-    gpa = 0
     if grade >= 93:
         gpa = 4
     elif grade >= 90:
